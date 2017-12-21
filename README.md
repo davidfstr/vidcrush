@@ -24,3 +24,11 @@ vidcrush.py my_video.mp4
 
 The original video file will be moved to the trash (or recycle bin)
 after the new video file has been successfully encoded.
+
+## Running Tests
+
+There aren't any tests yet but you can run the typechecker using:
+
+```
+make
+```
