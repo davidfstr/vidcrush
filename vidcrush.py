@@ -1,5 +1,6 @@
 #!/usr/bin/env python3
 
+import argparse
 import os
 import os.path
 import re
@@ -10,11 +11,16 @@ import tempfile
 from typing import Any, Dict, List, Optional, Tuple
 
 
-def main(args: List[str]) -> None:
-    if len(args) == 0:
-        sys.exit('syntax: vidcrush <video_filepath>...')
-        return
-    video_filepaths = args
+def main() -> None:
+    parser = argparse.ArgumentParser(description=
+        'Reencode video files at a smaller size.')
+    parser.add_argument(
+        '-s', '--scale', dest='scale', type=float, default=0.5,
+        help='fraction to multiply the original video dimensions by')
+    parser.add_argument('video_filepaths', nargs='+')
+    args = parser.parse_args()
+    video_filepaths = args.video_filepaths  # type: List[str]
+    scale = args.scale                      # type: float
     
     for video_filepath in video_filepaths:
         if not os.path.isfile(video_filepath):
@@ -27,11 +33,11 @@ def main(args: List[str]) -> None:
         return
     
     if len(video_filepaths) == 1:
-        crush(hb, video_filepath, quiet=False)
+        crush(hb, video_filepath, scale, quiet=False)
     else:
         for video_filepath in video_filepaths:
             print(video_filepath)
-            crush(hb, video_filepath, quiet=True)
+            crush(hb, video_filepath, scale, quiet=True)
 
 
 Handbrake = str  # filepath to Handbrake binary
@@ -45,7 +51,7 @@ def find_handbrake() -> Optional[Handbrake]:
     return None  # not found
 
 
-def crush(hb: Handbrake, old_video_filepath: str, quiet: bool) -> None:
+def crush(hb: Handbrake, old_video_filepath: str, scale: float, *, quiet: bool) -> None:
     width_height = get_video_size(hb, old_video_filepath)
     if width_height is None:
         sys.exit('not a video file: ' + old_video_filepath)
@@ -60,7 +66,7 @@ def crush(hb: Handbrake, old_video_filepath: str, quiet: bool) -> None:
             hb,
             old_video_filepath,
             new_video_file.name,
-            (width // 2, height // 2),
+            (int(width * scale), int(height * scale)),
             quiet)
         move_to_trash(old_video_filepath)
         os.rename(new_video_file.name, old_video_filepath)
@@ -107,6 +113,6 @@ def move_to_trash(filepath: str) -> None:
 
 if __name__ == '__main__':
     try:
-        main(sys.argv[1:])
+        main()
     except KeyboardInterrupt:
         pass
