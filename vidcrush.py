@@ -17,6 +17,9 @@ def main() -> None:
     parser.add_argument(
         '-s', '--scale', dest='scale', type=float, default=0.5,
         help='fraction to multiply the original video dimensions by')
+    parser.add_argument(
+        '-r', '--replace', dest='replace', action='store_true',
+        help='replaces the original video file')
     parser.add_argument('video_filepaths', nargs='+')
     args = parser.parse_args()
     video_filepaths = args.video_filepaths  # type: List[str]
@@ -33,11 +36,11 @@ def main() -> None:
         return
     
     if len(video_filepaths) == 1:
-        crush(hb, video_filepath, scale, quiet=False)
+        crush(hb, video_filepath, scale, replace=args.replace, quiet=False)
     else:
         for video_filepath in video_filepaths:
             print(video_filepath)
-            crush(hb, video_filepath, scale, quiet=True)
+            crush(hb, video_filepath, scale, replace=args.replace, quiet=True)
 
 
 Handbrake = str  # filepath to Handbrake binary
@@ -51,12 +54,21 @@ def find_handbrake() -> Optional[Handbrake]:
     return None  # not found
 
 
-def crush(hb: Handbrake, old_video_filepath: str, scale: float, *, quiet: bool) -> None:
+def crush(hb: Handbrake, old_video_filepath: str, scale: float, *, replace: bool, quiet: bool) -> None:
     width_height = get_video_size(hb, old_video_filepath)
     if width_height is None:
         sys.exit('not a video file: ' + old_video_filepath)
         return
     (width, height) = width_height
+    
+    # Calculate new video filepath
+    NEW_VIDEO_FILENAME_SUFFIX = '-%s' % scale
+    prefix, dot, suffix = old_video_filepath.rpartition('.')
+    if prefix == '':
+        suffix += NEW_VIDEO_FILENAME_SUFFIX
+    else:
+        prefix += NEW_VIDEO_FILENAME_SUFFIX
+    new_video_filepath = prefix + dot + suffix
 
     old_video_fileext = os.path.splitext(old_video_filepath)[1]
     with tempfile.NamedTemporaryFile(
@@ -68,8 +80,11 @@ def crush(hb: Handbrake, old_video_filepath: str, scale: float, *, quiet: bool) 
             new_video_file.name,
             (int(width * scale), int(height * scale)),
             quiet)
-        move_to_trash(old_video_filepath)
-        os.rename(new_video_file.name, old_video_filepath)
+        if replace:
+            move_to_trash(old_video_filepath)
+            os.rename(new_video_file.name, old_video_filepath)
+        else:
+            os.rename(new_video_file.name, new_video_filepath)
 
 
 def get_video_size(hb: Handbrake, video_filepath: str) -> Optional[Tuple[int, int]]:
