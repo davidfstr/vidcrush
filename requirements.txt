@@ -1,2 +1,1 @@
-mypy-lang
 send2trash
